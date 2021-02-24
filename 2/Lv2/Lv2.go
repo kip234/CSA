@@ -2,7 +2,10 @@
 //该接收者能够判断传入参数的类型，并作出不同的反应
 package Lv2
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+)
 
 func Receiver(v interface{}) {
 	switch v.(type) {
@@ -43,4 +46,9 @@ func Receiver(v interface{}) {
 	default:
 		fmt.Println("这个是复合类型或者是函数")
 	}
+}
+
+//使用 内置的反射
+func Receiver1(data interface{}){
+	fmt.Println("这是一个",reflect.TypeOf(data))
 }
