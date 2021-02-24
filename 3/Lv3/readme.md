@@ -97,9 +97,9 @@ import "fmt"
 
 func main() {
 	channel:=make(chan int)
-    close(channel)
+	close(channel)
 	fmt.Println(<-channel)
-    fmt.Println(<-channel)
+	fmt.Println(<-channel)
 }
 ```
 

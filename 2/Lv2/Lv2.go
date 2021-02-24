@@ -48,7 +48,6 @@ func Receiver(v interface{}) {
 	}
 }
 
-//使用 内置的反射
-func Receiver1(data interface{}){
-	fmt.Println("这是一个",reflect.TypeOf(data))
+func Receiver1(data interface{})  {
+	fmt.Println("这个是",reflect.TypeOf(data))
 }
