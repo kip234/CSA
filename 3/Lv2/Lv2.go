@@ -6,7 +6,6 @@
 //c.Save()	含saveUsers函数
 //匿名函数X2
 
-
 package Lv2
 //package main
 
@@ -36,8 +35,9 @@ type User struct {
 type userHash map[string]string
 
 type Checker struct {
-	Lock sync.RWMutex//来把锁-但是在这部分代码面似乎不需要
+	uhLock sync.RWMutex//来把锁
 	uh userHash	// 用户信息
+	rgLock sync.RWMutex//来把锁
 	registerUsers []User // 注册了但未保存的用户
 }
 //登录
@@ -47,14 +47,18 @@ func (c *Checker) SignIn() {
 	fmt.Println("请输入用户名和密码")
 	var username, password string
 	fmt.Scan(&username, &password)
+	c.uhLock.RLock()
 	if _, ok := c.uh[username]; !ok {
 		fmt.Println("查无此人")
+		c.uhLock.RUnlock()
 		return
 	}
 	if c.uh[username] != password {
 		fmt.Println("用户名密码错误")
+		c.uhLock.RUnlock()
 		return
 	}
+	c.uhLock.RUnlock()
 
 	fmt.Println("登录成功")
 }
@@ -65,10 +69,13 @@ func (c *Checker) SignUp() {
 	fmt.Println("请输入用户名")
 	var username, password string
 	fmt.Scan(&username)
+	c.uhLock.RLock()
 	if _, ok := c.uh[username]; ok {
 		fmt.Println("用户名已被占用")
+		c.uhLock.RUnlock()
 		return
 	}
+	c.uhLock.RUnlock()
 	fmt.Println("请输入密码")
 	for {
 		fmt.Scan(&password)
@@ -78,22 +85,30 @@ func (c *Checker) SignUp() {
 		fmt.Println("密码长度应大于六位，请重新输入")
 	}
 
-
+	c.rgLock.Lock()
 	c.registerUsers = append(c.registerUsers, User{
 		Username: username,
 		Password: password,
 	})
+	c.rgLock.Unlock()
+
+	c.rgLock.RLock()
 	if len(c.registerUsers) > 10 {
 		go c.Save()
 	}
+	c.rgLock.RUnlock()
+	c.uhLock.Lock()
 	c.uh[username] = password
+	c.uhLock.Unlock()
 }
 //
 func (c *Checker) Save() {
 	defer fix()
 
 	fail := saveUsers(c.registerUsers)
-	c.registerUsers = fail
+	c.rgLock.Lock()
+	c.registerUsers = fail//?覆盖?//**\\
+	c.rgLock.Unlock()
 }
 
 func initUsers() (userHash, error){
@@ -161,6 +176,7 @@ func initUsers() (userHash, error){
 }
 
 func saveUsers(users []User) (fail []User){
+	var failLock sync.Mutex
 	defer fix()
 
 	f, err := os.OpenFile(filePath, os.O_WRONLY | os.O_CREATE | os.O_APPEND, os.ModePerm)
@@ -180,7 +196,9 @@ func saveUsers(users []User) (fail []User){
 			user64 := base64.StdEncoding.EncodeToString(buf)
 			if err != nil {
 				fmt.Println(err)
+				failLock.Lock()
 				fail = append(fail, user)
+				failLock.Unlock()
 				return
 			}
 
@@ -192,7 +210,9 @@ func saveUsers(users []User) (fail []User){
 			n, err := writer.Write(append([]byte(user64 + "." + signature), byte('\n')))
 			if err != nil {
 				fmt.Println(n, err)
+				failLock.Lock()
 				fail = append(fail, user)
+				failLock.Unlock()
 				return
 			}
 		} (user)
